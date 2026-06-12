@@ -1,0 +1,17 @@
+{
+  "$comment": "All durable harness state, owned by the CLI (./AGENTS.sh) — never hand-edit. Keys: setup (present only while guided setup is pending; init drives it), commands (via `cmd set/rm`; verify = definition-of-done step, init = session-start check), features (via `feature ...`; max one in_progress, never delete — mark done), progress (via `log`; append-only, display bounded by the CLI), rules (via `docs add/rm`; curated project knowledge). Future harness versions may add top-level keys. Transient scratch lives in agents.scratch.json (gitignored).",
+  "setup": {
+    "done": []
+  },
+  "commands": {},
+  "features": [
+    {
+      "id": "F-000",
+      "title": "Complete guided project setup",
+      "status": "todo",
+      "notes": "Driven by ./AGENTS.sh init (SETUP MODE); closes itself when setup finalizes."
+    }
+  ],
+  "progress": [],
+  "rules": []
+}
