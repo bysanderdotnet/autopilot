@@ -1,17 +1,126 @@
 {
   "$comment": "All durable harness state, owned by the CLI (./AGENTS.sh) — never hand-edit. Keys: setup (present only while guided setup is pending; init drives it), commands (via `cmd set/rm`; verify = definition-of-done step, init = session-start check), features (via `feature ...`; max one in_progress, never delete — mark done), progress (via `log`; append-only, display bounded by the CLI), rules (via `docs add/rm`; curated project knowledge). Future harness versions may add top-level keys. Transient scratch lives in agents.scratch.json (gitignored).",
-  "setup": {
-    "done": []
-  },
   "commands": {},
   "features": [
     {
       "id": "F-000",
       "title": "Complete guided project setup",
-      "status": "todo",
+      "status": "done",
       "notes": "Driven by ./AGENTS.sh init (SETUP MODE); closes itself when setup finalizes."
+    },
+    {
+      "id": "F-00001",
+      "title": "Toolchain + Cloudflare scaffold + verify commands",
+      "status": "todo",
+      "notes": "npm create cloudflare react, deps (jose octokit zod vitest), wrangler.jsonc, D1, migrations/0001_init.sql, register cmd lint/test/build --verify. Phase 0."
+    },
+    {
+      "id": "F-00002",
+      "title": "Phase 1: private dashboard shell",
+      "status": "todo",
+      "notes": "React UI, Access JWT validation in worker, D1 connected, /api/me + /api/health, dashboard layout. Dev auth bypass via x-dev-user-email (APP_ENV=development only)."
+    },
+    {
+      "id": "F-00003",
+      "title": "Phase 2: Jules source browser",
+      "status": "todo",
+      "notes": "JulesProvider client w/ pagination + redaction, /api/jules/sources, UI lists sources+branches."
+    },
+    {
+      "id": "F-00004",
+      "title": "Phase 3: repo config CRUD",
+      "status": "todo",
+      "notes": "Add/edit repo_configs from Jules source: prompt, branch, quota, runtime, run window, auto-merge mode. Enable/disable. Saved disabled by default."
+    },
+    {
+      "id": "F-00005",
+      "title": "Phase 4: manual run (no merge)",
+      "status": "todo",
+      "notes": "Run-now -> run row -> AutopilotRunnerWorkflow creates Jules session, polls to terminal, stores run_events, shows session URL."
+    },
+    {
+      "id": "F-00006",
+      "title": "Phase 5: PR tracking (no merge)",
+      "status": "todo",
+      "notes": "Extract PR url from session outputs, parse owner/repo/number, add autopilot + autopilot:jules labels, PR comment, show PR in UI."
+    },
+    {
+      "id": "F-00007",
+      "title": "Phase 6: CI-aware safe merge",
+      "status": "todo",
+      "notes": "GitHub App auth, prSafety.ts checks mergeability+checks+sha, merge only if safe w/ head sha. auto_merge_enabled off by default."
+    },
+    {
+      "id": "F-00008",
+      "title": "Phase 7: scheduler",
+      "status": "todo",
+      "notes": "5-min cron tick, per-repo lock, daily quota (attempts), min_delay, run window, auto run creation w/ deterministic workflow id."
+    },
+    {
+      "id": "F-00009",
+      "title": "Phase 8: cleanup + manual controls",
+      "status": "todo",
+      "notes": "cancel run, retry, close tracked PR, global pause, manual_review_required state."
+    },
+    {
+      "id": "F-00010",
+      "title": "Phase 9: multi-agent registry",
+      "status": "todo",
+      "notes": "Later: agent provider registry, second provider behind AgentProvider."
     }
   ],
-  "progress": [],
-  "rules": []
+  "progress": [
+    {
+      "date": "2026-06-13 11:14 UTC",
+      "title": "project setup",
+      "done": "setup complete: 0 command(s) registered, 10 feature(s) seeded, 7 rule(s) recorded",
+      "verified": "unverified (no verify run recorded)",
+      "blockers": "none",
+      "feature": "F-000"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R-001",
+      "category": "architecture",
+      "text": "Cloudflare Worker (worker/) serves React SPA (src/) + /api/*; durable runs in Cloudflare Workflows (AutopilotRunnerWorkflow); D1 = repo_configs/runs/repo_locks/daily_counters/run_events; 5-min cron tick wakes scheduler.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-002",
+      "category": "architecture",
+      "text": "Agents behind AgentProvider interface (worker/agents/); JulesProvider first. Jules API base https://jules.googleapis.com/v1alpha, auth x-goog-api-key. No session delete/cancel endpoint.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-003",
+      "category": "architecture",
+      "text": "GitHub via App installation token (worker/github/), generated on demand (1h expiry), cached in memory not D1. PR safety gate in prSafety.ts.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-004",
+      "category": "conventions",
+      "text": "wrangler.jsonc not .toml. Secrets via wrangler secret put, never vars/D1/code. Redact api keys + auth headers in all errors/logs.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-005",
+      "category": "conventions",
+      "text": "Per-repo single active run enforced via repo_locks. Count attempts not merges against daily quota. Quota date uses repo timezone (default Europe/Brussels).",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-006",
+      "category": "conventions",
+      "text": "Merge only Autopilot-owned PRs: tracked run pr_url + autopilot/autopilot:jules label + matching repo. Pass head sha on merge. Never touch human PRs.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-007",
+      "category": "testing",
+      "text": "Vitest. Cover: Access JWT missing/wrong-email -> 403; secret redaction; scheduler skip (disabled/locked/quota/window) + starts exactly one workflow; workflow session lifecycle + lock release; PR safety (no label, failing/pending/null checks never merge; sha mismatch blocks); D1 atomic quota + lock replace.",
+      "added": "2026-06-13"
+    }
+  ]
 }

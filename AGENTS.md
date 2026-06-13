@@ -10,10 +10,9 @@ handoff. All state in `.agents/agents.json`, CLI-owned — never hand-edit.
 
 ## Project
 
-<!-- TODO(setup): fill in, then remove this comment -->
-- Name:
-- Stack:
-- Purpose:
+- Name: autopilot
+- Stack: TypeScript, React, Vite, Cloudflare Workers/Workflows/D1, Vitest, Hono. Pre-impl: only harness + spec exist now.
+- Purpose: Private AI coding control plane behind Cloudflare Access. Runs Google Jules sessions on selected GitHub repos, one active run per repo, detects the PR, waits for CI + mergeability, merges only when safe. Spec: autopilot_implementation_instructions.md.
 
 ## Rules
 
@@ -21,7 +20,9 @@ handoff. All state in `.agents/agents.json`, CLI-owned — never hand-edit.
 - Done = `./AGENTS.sh verify` green. Anything else = "unverified" — say so.
 - `AGENTS.sh` / `.agents/agents.py` = harness internals. Usage = `help`,
   not reading or editing source.
-<!-- TODO(setup): add project no-go zones (e.g. "never edit /migrations"), then remove this comment -->
+- Never commit secrets. Secrets = Cloudflare Worker secrets only, never `vars`/D1/code. Redact api keys + auth headers in all logs/errors.
+- Never hand-edit applied `migrations/*.sql`; add a new migration.
+- Merge/close only Autopilot-owned PRs (tracked run pr_url + autopilot label + matching repo). Never touch human PRs.
 
 ## Skills
 

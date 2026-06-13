@@ -1,110 +1,72 @@
-# template-ai-harness
+# autopilot
 
-Template repository for setting up projects with an AI harness. It ships a
-small, project-local workflow layer that helps AI coding agents start sessions,
-stay scoped to one feature, run verification, record progress, and hand work off
-cleanly between sessions.
+Private AI coding control plane. Lets one trusted user run automated
+[Google Jules](https://jules.google) coding sessions on selected GitHub
+repositories: create a Jules session, wait for it to finish, detect the PR it
+opens, wait for CI + mergeability, merge only when safe, then start the next run
+if daily quota remains.
 
-> Starting a new project from this template? Just start an agent session —
-> the harness detects the unconfigured project and guides the agent through
-> setup step by step (`./AGENTS.sh init`).
+Not a public SaaS — a private automation dashboard for repos controlled by the
+owner, served at `autopilot.bysander.net` behind Cloudflare Access.
 
-## Quick start
+> **Status: pre-implementation.** This repo currently holds the spec
+> (`autopilot_implementation_instructions.md`) and the agent harness. Application
+> code is not built yet. The spec is the source of truth for design.
 
-Use the root wrapper for all harness operations:
+## Core design
+
+Per-repository **sequential** runner — at most one active AI coding run per repo
+at a time:
+
+```text
+repo enabled -> no active run? -> daily quota left?
+  -> create one Jules session -> wait for finish -> detect PR
+  -> wait for CI + mergeability -> merge or fail safely
+  -> release repo lock -> maybe start next run later
+```
+
+A 5-minute cron is only a wake-up tick; the scheduler checks locks, quota,
+cooldown, and run windows before starting anything.
+
+## Planned stack
+
+| Layer | Tech |
+|---|---|
+| UI | React + Vite (Cloudflare Workers Assets, SPA) |
+| API + orchestration | Cloudflare Worker (TypeScript, Hono optional) |
+| Durable runs | Cloudflare Workflows |
+| Storage | Cloudflare D1 (repo configs, runs, locks, quotas, events) |
+| Scheduling | Cloudflare Cron Trigger |
+| Auth | Cloudflare Access + Access JWT validation (`jose`) |
+| Agent | Google Jules API (`x-goog-api-key`), `AgentProvider` abstraction |
+| Git | GitHub App installation token (`@octokit/auth-app`) |
+| Tests | Vitest |
+
+## Security model (non-negotiable)
+
+- Cloudflare Access protects the hostname; Worker still validates the Access JWT
+  on every `/api/*` route and checks email against `ALLOWED_ADMIN_EMAIL`.
+- Secrets live as Cloudflare Worker secrets only — never in `vars`, D1, or code.
+  Never log or return secrets; redact api keys + auth headers in all errors.
+- Merge/close only Autopilot-owned PRs: tracked run `pr_url` **and** `autopilot`
+  (or `autopilot:jules`) label **and** matching repo. Human PRs are never
+  touched. Merge passes the PR head `sha` and only when CI + mergeability pass.
+
+Full design, DB schema, API surface, and phased plan:
+[`autopilot_implementation_instructions.md`](./autopilot_implementation_instructions.md).
+
+## Working in this repo
+
+The agent harness drives the workflow. Use the wrapper, not the `.agents/`
+internals:
 
 ```sh
-./AGENTS.sh help
-./AGENTS.sh init
-./AGENTS.sh verify
-./AGENTS.sh handoff
+./AGENTS.sh init       # session start: status + next step
+./AGENTS.sh verify     # definition of done
+./AGENTS.sh handoff    # end-of-session checklist
+./AGENTS.sh help       # all commands
 ```
 
-`AGENTS.sh` finds an available Python interpreter and forwards every argument to
-the stdlib-only harness CLI in `.agents/agents.py`. Agents and humans should use
-the wrapper instead of reaching into `.agents/` directly; the implementation and
-state there are harness internals.
-
-## What's inside
-
-```
-AGENTS.sh                  Public harness entrypoint; forwards to .agents/agents.py
-AGENTS.md                  Agent operating manual — the single manual
-CLAUDE.md -> AGENTS.md     Claude Code entrypoint (symlink)
-GEMINI.md -> AGENTS.md     Gemini CLI entrypoint (symlink)
-.github/
-├── copilot-instructions.md  GitHub Copilot entrypoint (points to AGENTS.md)
-└── workflows/agents.yml   CI: ./AGENTS.sh ci on push/PR
-.claude/
-├── settings.json          SessionStart hook (auto-runs ./AGENTS.sh init) + permissions
-└── skills -> .agents/skills   Skill auto-discovery for Claude Code
-.agents/
-├── README.md              Map of harness internals + design principles
-├── agents.py              Harness CLI implementation; use ./AGENTS.sh help
-├── agents.json            All durable state: commands, features, progress log, rules
-├── agents.scratch.json    Transient scratch (gitignored; last verify result)
-└── skills/
-    └── new-skill/         How to author new skills (projects grow their own)
-```
-
-## One wrapper guides the workflow
-
-`./AGENTS.sh` is the stable interface. It abstracts away the `.agents/` folder,
-selects `python3` or `python`, and delegates to the harness CLI. The CLI then
-tells the agent what to do next at every step.
-
-| Subcommand | Job |
-|---|---|
-| `init` | Session start: on a fresh project it walks guided setup step by step; otherwise health check, skills index, rule counts, git status, current feature, recent progress, and a concrete next step |
-| `verify` | Definition of done: runs registered `--verify` commands in order and records the result |
-| `handoff` | End-of-session checklist with live status: verify fresh? progress logged? feature closed? committed? pushed? |
-| `docs` | Live project docs: a repo map generated from `git ls-files` (never drifts) + curated rules for architecture, conventions, and testing |
-| `maintenance` | Upkeep sweep: re-runs the setup checks (project identity, verify commands), flags rule categories to combine/prune, stale rules, blocked features, skills and commands to re-check |
-| `skill new/list` | Scaffold a new skill playbook in `.agents/skills/<name>/` / list discovered skills |
-| `cmd set/rm/list`, `run` | Command registry: agents register build/test/lint/dev commands instead of editing harness scripts |
-| `feature list/add/start/done/block/note` | Scope tracking; enforces one feature in progress |
-| `log`, `progress` | Session log: entries auto-stamped with date, commit, and last verify result |
-| `check`, `ci` | Structure validation / the single call CI makes |
-
-Agents never need to know where state lives or hand-edit JSON. Adding a test
-step to a project is `./AGENTS.sh cmd set test "npm test" --verify`, not a
-script rewrite. All subcommand documentation lives in `./AGENTS.sh help`, so
-the manual never drifts from the tool.
-
-## Project docs that don't rot
-
-Static architecture documents drift from the code. Here the repo map is
-generated live (`./AGENTS.sh docs`), and only the part worth curating is
-stored: terse rules, added one fact at a time as agents learn them
-(`./AGENTS.sh docs add conventions "..."`). The harness tracks rule counts and
-age; `./AGENTS.sh maintenance` tells an agent doing an upkeep session exactly
-what to combine, prune, or re-validate.
-
-## Works with
-
-| Agent | Entrypoint | Extras |
-|---|---|---|
-| Claude Code | `CLAUDE.md` (symlink) | SessionStart hook auto-runs `./AGENTS.sh init`; skills auto-discovered |
-| OpenAI Codex | `AGENTS.md` (read natively) | — |
-| Gemini CLI | `GEMINI.md` (symlink) | — |
-| GitHub Copilot | `.github/copilot-instructions.md` | Points to `AGENTS.md` and mirrors core rules for surfaces that cannot open repo files |
-
-One manual, four entrypoints. Agents without hook support run `./AGENTS.sh init`
-manually. Either way, init prints a skills index so every agent sees the local
-playbooks at session start.
-
-## Design principles
-
-Based on harness-engineering research (OpenAI, Anthropic,
-[learn-harness-engineering](https://github.com/walkinglabs/learn-harness-engineering)).
-
-1. **Instructions** — `AGENTS.md` stays short; detail lives in
-   `./AGENTS.sh help`, loaded on demand.
-2. **State** — one JSON file behind the CLI, so sessions resume without cold
-   start and agents can't corrupt state by hand-editing.
-3. **Verification** — done means `./AGENTS.sh verify` is green.
-4. **Scope** — one feature at a time, tracked by the CLI and committed alone.
-5. **Handoff** — end sessions with an explicit checklist, progress log, and
-   clean git state.
-6. **Maintenance** — generated docs never drift; curated rules are kept small
-   by an explicit upkeep loop.
+State lives in `.agents/agents.json` (CLI-owned, never hand-edit). Agent rules:
+`AGENTS.md`. One feature per session/commit; done means `./AGENTS.sh verify` is
+green.

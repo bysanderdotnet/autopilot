@@ -10,4 +10,22 @@
 .agents/__pycache__/
 
 # --- Project ---
-# TODO(setup): add stack-specific ignores here (build output, deps, env files, OS/editor noise)
+# Node / deps
+node_modules/
+npm-debug.log*
+# Build output
+dist/
+.wrangler/
+# Cloudflare Workers types (generated)
+worker-configuration.d.ts
+# Secrets / local env — NEVER commit
+.dev.vars
+.dev.vars.*
+*.pem
+.env
+.env.*
+# OS / editor noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
