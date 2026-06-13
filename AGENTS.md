@@ -12,7 +12,7 @@ handoff. All state in `.agents/agents.json`, CLI-owned — never hand-edit.
 
 - Name: autopilot
 - Stack: TypeScript, React, Vite, Cloudflare Workers/Workflows/D1, Vitest, Hono. Pre-impl: only harness + spec exist now.
-- Purpose: Private AI coding control plane behind Cloudflare Access. Runs Google Jules sessions on selected GitHub repos, one active run per repo, detects the PR, waits for CI + mergeability, merges only when safe. Spec: autopilot_implementation_instructions.md.
+- Purpose: Private AI coding control plane behind Cloudflare Access. Runs Google Jules sessions on selected GitHub repos, one active run per repo, detects the PR, waits for CI + mergeability, merges only when safe. Full build spec: README.md.
 
 ## Rules
 
