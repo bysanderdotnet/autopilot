@@ -13,8 +13,7 @@ added later behind the same orchestration layer.
 
 > **Status: pre-implementation.** This repo holds the agent harness and this
 > spec. Application code is not built yet. **This README is the complete build
-> reference / source of truth** (the former `autopilot_implementation_instructions.md`
-> has been folded in here).
+> reference / source of truth.**
 
 ---
 
