@@ -1,17 +1,158 @@
 {
   "$comment": "All durable harness state, owned by the CLI (./AGENTS.sh) — never hand-edit. Keys: setup (present only while guided setup is pending; init drives it), commands (via `cmd set/rm`; verify = definition-of-done step, init = session-start check), features (via `feature ...`; max one in_progress, never delete — mark done), progress (via `log`; append-only, display bounded by the CLI), rules (via `docs add/rm`; curated project knowledge). Future harness versions may add top-level keys. Transient scratch lives in agents.scratch.json (gitignored).",
-  "setup": {
-    "done": []
-  },
   "commands": {},
   "features": [
     {
       "id": "F-000",
       "title": "Complete guided project setup",
-      "status": "todo",
+      "status": "done",
       "notes": "Driven by ./AGENTS.sh init (SETUP MODE); closes itself when setup finalizes."
+    },
+    {
+      "id": "F-00001",
+      "title": "Toolchain + Cloudflare scaffold + verify commands",
+      "status": "todo",
+      "notes": "Phase 0 scaffold. npm create cloudflare@latest autopilot --framework=react; deps jose @octokit/auth-app @octokit/request zod; dev vitest @testing-library/react @testing-library/jest-dom jsdom. Write wrangler.jsonc (README skeleton): name autopilot, main worker/index.ts, compatibility_date>=2024-10-22, nodejs_compat, assets dist/client SPA, workflows AUTOPILOT_RUNNER=AutopilotRunnerWorkflow, crons */5, d1 DB. Create D1 autopilot-db weur/eu. migrations/0001_init.sql full schema. wrangler types. Register cmd lint+test+build --verify. Add .dev.vars.example. Acceptance: verify green."
+    },
+    {
+      "id": "F-00002",
+      "title": "Phase 1: private dashboard shell",
+      "status": "todo",
+      "notes": "Phase 1 dashboard shell. worker/index.ts + api/auth.ts: validate Cf-Access-Jwt-Assertion w/ jose vs TEAM_DOMAIN+POLICY_AUD then email==ALLOWED_ADMIN_EMAIL; 403 missing/wrong. Dev bypass x-dev-user-email only APP_ENV=development. Routes GET /api/me, /api/health. D1 bound, migrations applied local. React Layout + dashboard skeleton. Acceptance: unauth /api/* -> 403; me returns email; health ok."
+    },
+    {
+      "id": "F-00003",
+      "title": "Phase 2: Jules source browser",
+      "status": "todo",
+      "notes": "Phase 2 Jules source browser. agents/AgentProvider.ts interface + agents/jules/JulesProvider.ts: base https://jules.googleapis.com/v1alpha, header x-goog-api-key, paginate sources/sessions/activities, redact key in errors, 401/403 fatal 429/5xx retry. Route GET /api/jules/sources. UI lists sources+branches. Acceptance: sources render; bad-key error redacted."
+    },
+    {
+      "id": "F-00004",
+      "title": "Phase 3: repo config CRUD",
+      "status": "todo",
+      "notes": "Phase 3 repo config CRUD. db/repositories.ts + routes GET/POST/PATCH/DELETE /api/repos + enable/disable. Form: pick Jules source, branch, prompt_template, daily_attempt_limit, max_runtime_minutes, run window+timezone, merge_method, auto_merge_enabled, require_plan_approval. Saved disabled by default; explicit Enable automation. Acceptance: create/edit persist D1; new config enabled=0."
+    },
+    {
+      "id": "F-00005",
+      "title": "Phase 4: manual run (no merge)",
+      "status": "todo",
+      "notes": "Phase 4 manual run, no merge. POST /api/repos/:id/run-now -> createQueuedRun -> AUTOPILOT_RUNNER.create id autopilot:<cfg>:<run>. workflows/AutopilotRunnerWorkflow.ts steps 1-5: load cfg, acquire lock, reserve quota, create Jules session AUTO_CREATE_PR, poll to terminal/timeout, persist run_events + session url. GET /api/runs/:id + /events. Acceptance: one session; polls to COMPLETED/FAILED/timeout; lock released; events shown."
+    },
+    {
+      "id": "F-00006",
+      "title": "Phase 5: PR tracking (no merge)",
+      "status": "todo",
+      "notes": "Phase 5 PR tracking, no merge. extractPullRequestUrl from session.outputs[].pullRequest.url (activities fallback). Parse owner/repo/number. addLabels autopilot + autopilot:jules; createIssueComment. Persist pr_url/number/head_sha. Show PR in UI. Acceptance: tracked PR labeled+commented; untracked untouched."
+    },
+    {
+      "id": "F-00007",
+      "title": "Phase 6: CI-aware safe merge",
+      "status": "todo",
+      "notes": "Phase 6 CI-aware safe merge. github/githubAuth.ts: decode GITHUB_APP_PRIVATE_KEY_B64, installation token on demand, cache mem. GitHubClient methods (README). prSafety.ts evaluatePrSafety -> 12 conditions. mergePullRequest PUT w/ head sha + merge_method, only when canMerge. auto_merge_enabled off default. Acceptance: human/no-label never merged; failing/pending/null checks not merged; sha mismatch blocks; passing+mergeable merges w/ sha."
+    },
+    {
+      "id": "F-00008",
+      "title": "Phase 7: scheduler",
+      "status": "todo",
+      "notes": "Phase 7 scheduler. worker/index.ts scheduled() on */5 -> schedulerTick: list enabled, skip locked/quota-exhausted/outside-window/min_delay-not-elapsed, createQueuedRun, AUTOPILOT_RUNNER.create deterministic id; already-exists -> no dup. quota.ts reserve attempts atomically before Jules. locks.ts acquire/expire/release. Acceptance: disabled/locked/quota/window skip; eligible repo starts exactly one workflow."
+    },
+    {
+      "id": "F-00009",
+      "title": "Phase 8: cleanup + manual controls",
+      "status": "todo",
+      "notes": "Phase 8 cleanup + manual controls. POST /api/runs/:id/cancel + /retry + /close-pr (Autopilot-owned only). Global pause in app_settings. States manual_review_required/cancelled/closed_failed_pr. Timeout + CI-fail handling per README sec 21. Acceptance: cancel/retry/close work; global pause stops scheduler; human PR never closed."
+    },
+    {
+      "id": "F-00010",
+      "title": "Phase 9: multi-agent registry",
+      "status": "todo",
+      "notes": "Phase 9 later. Agent provider registry; second provider behind AgentProvider interface; multi-agent agent_kind in UI. Not MVP."
     }
   ],
-  "progress": [],
-  "rules": []
+  "progress": [
+    {
+      "date": "2026-06-13 11:14 UTC",
+      "title": "project setup",
+      "done": "setup complete: 0 command(s) registered, 10 feature(s) seeded, 7 rule(s) recorded",
+      "verified": "unverified (no verify run recorded)",
+      "blockers": "none",
+      "feature": "F-000"
+    },
+    {
+      "date": "2026-06-13 11:49 UTC",
+      "title": "Fold full spec into repo",
+      "done": "README.md = complete build reference (all 29 spec sections: arch, security, APIs, DB schema, skeletons, AgentProvider, prSafety, workflow, scheduler, routes, UI, prompts, failure/quota/lock, testing, acceptance, non-goals). Enriched F-00001..F-00010 notes w/ per-phase deliverables+acceptance. +4 rules (R-008..R-011). AGENTS.md spec pointer -> README.md. autopilot_implementation_instructions.md now redundant, safe to delete.",
+      "verified": "unverified (no verify run recorded)",
+      "blockers": "none",
+      "commit": "d71b28f (+ uncommitted changes)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R-001",
+      "category": "architecture",
+      "text": "Cloudflare Worker (worker/) serves React SPA (src/) + /api/*; durable runs in Cloudflare Workflows (AutopilotRunnerWorkflow); D1 = repo_configs/runs/repo_locks/daily_counters/run_events; 5-min cron tick wakes scheduler.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-002",
+      "category": "architecture",
+      "text": "Agents behind AgentProvider interface (worker/agents/); JulesProvider first. Jules API base https://jules.googleapis.com/v1alpha, auth x-goog-api-key. No session delete/cancel endpoint.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-003",
+      "category": "architecture",
+      "text": "GitHub via App installation token (worker/github/), generated on demand (1h expiry), cached in memory not D1. PR safety gate in prSafety.ts.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-004",
+      "category": "conventions",
+      "text": "wrangler.jsonc not .toml. Secrets via wrangler secret put, never vars/D1/code. Redact api keys + auth headers in all errors/logs.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-005",
+      "category": "conventions",
+      "text": "Per-repo single active run enforced via repo_locks. Count attempts not merges against daily quota. Quota date uses repo timezone (default Europe/Brussels).",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-006",
+      "category": "conventions",
+      "text": "Merge only Autopilot-owned PRs: tracked run pr_url + autopilot/autopilot:jules label + matching repo. Pass head sha on merge. Never touch human PRs.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-007",
+      "category": "testing",
+      "text": "Vitest. Cover: Access JWT missing/wrong-email -> 403; secret redaction; scheduler skip (disabled/locked/quota/window) + starts exactly one workflow; workflow session lifecycle + lock release; PR safety (no label, failing/pending/null checks never merge; sha mismatch blocks); D1 atomic quota + lock replace.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-008",
+      "category": "architecture",
+      "text": "Access JWT in Cf-Access-Jwt-Assertion header; validate w/ jose vs TEAM_DOMAIN+POLICY_AUD, then email==ALLOWED_ADMIN_EMAIL. Dev bypass x-dev-user-email only when APP_ENV=development. /api/* never expose arbitrary GitHub ops; every action maps to a tracked run.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-009",
+      "category": "conventions",
+      "text": "Workflow: external calls inside step.do, idempotent, deterministic step names in loops; persist intermediate state to D1. Jules/GitHub auth (401/403) non-retryable; 429/5xx retryable. Poll ~2min, back off on 403/429, never spam merge.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-010",
+      "category": "conventions",
+      "text": "MVP polling not webhooks. Non-goals: no webhooks, no auto branch-update, no issue selection, no Jules session delete/cancel, no public accounts/billing/browser-stored keys, no large refactors. Start: 1 repo, manual runs, auto-merge off.",
+      "added": "2026-06-13"
+    },
+    {
+      "id": "R-011",
+      "category": "testing",
+      "text": "Run states (canonical, README sec 11): queued lock_acquired quota_reserved creating_agent_session agent_* no_pr_created pr_detected pr_annotated waiting_for_ci waiting_for_mergeability merge_ready merged closed_failed_pr timed_out abandoned manual_review_required cancelled failed.",
+      "added": "2026-06-13"
+    }
+  ]
 }
